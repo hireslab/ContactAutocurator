@@ -20,22 +20,73 @@ else
     error('No avi or mp4 video files found in video directory')
 end
 
-% Make WL files
-Whisker.makeAllDirectory_WhiskerTrial_2pad(videoDir, 0)
 
 % Loop through video list for packaging 
 curationArray = cell(1,length(vidList));
 for i = 1:length(vidList)
-    wtFileName = [dataDir filesep vidList(i).name(1:end-4) '.WT'];
+    whiskerFileName = [dataDir filesep vidList(i).name(1:end-4) '.whiskers'];
+    barFileName = [dataDir filesep vidList(i).name(1:end-4) '.bar'];
     fullVideoName = [videoDir filesep vidList(i).name];
-    distanceInfo = find_distance_info(whiskerFileName, fullVideoName);
+    
+    % Get number of frames in video
+    lVideo = VideoReader(fullVideoName);
+    numFrames = lVideo.NumOfFrames;
+    
+    [distanceInfo, tFrames, barCoords] = find_distance_info(whiskerFileName, barFileName);
     curationArray{i}.distanceToPole = distanceInfo;
     curationArray{i}.video = fullVideoName;
+    curationArray{i}.numTrackedFrames = length(distanceInfo);
+    curationArray{i}.numFrames = numFrames;
+    curationArray{i}.bar = barCoords;
+    curationArray{i}.trackedFrames = tFrames;
 end
 
-% FIND_DISTANCE_INFO reads a .whiskers file, calculates bar position, and
+end
+
+% FIND_DISTANCE_INFO reads a .whiskers file, extracts bar position, and
 % finds distance to pole information
-% function [dist] = find_distance_info(whiskersFile, video)
-% [r, stuff] = load_whiskers_file(whiskersFile);
-% 
-% end
+function [dist, trackedFrames, barPositions] = find_distance_info(whiskersFile, barFile)
+[whiskerInf, ~] = load_whiskers_file(whiskersFile);
+% And now to extract out distance to pole information
+dist = zeros(1, length(whiskerInf));
+barPositions = load(barFile,'-ASCII');
+trackedFrames = zeros(1, length(whiskerInf));
+for timePt = 1:length(whiskerInf)
+    % Get all x and y coordinates traced on whisker
+    xPoints = whiskerInf{timePt}{3}{1};
+    yPoints = whiskerInf{timePt}{4}{1};
+    % Get bar position for current time
+    barIdx = find(barPositions(:,1) == timePt);
+    % Skip distance to pole for this point if no bar position
+    if isempty(barIdx)
+        dist(timePt) = nan;
+        continue
+    end
+    [xBar,yBar] = barPositions(barIdx,2:3);
+    % Now calculate rough distance to pole. This is not, strictly speaking,
+    % the most accurate way to run this calculation, however, given we 
+    % only require rough measurements and the Janelia Farm Whisker tracker
+    % provides many vertices in each trace, it's much faster to simply run
+    % a simple distance calculation on each vertex rather than a fitted
+    % line
+    if length(xPoints) ~= length(yPoints)
+        dist(timePt) = nan;
+    else
+        % Run brute force distance to pole calculation
+        shortestDist = [];
+        for vert = 1:length(xPoints)
+            ptDist = sqrt((xBar - xPoints(vert)).^2 + (yBar - yPoints(vert)).^2);
+            if vert == 1
+                % First pass
+                shortestDist = ptDist;
+            elseif ptDist < shortestDist
+                % Replace only if smaller distance
+                shortestDist = ptDist;
+            end
+        end
+        dist(timePt) = shortestDist;
+    end
+    % Finally, get index of this tracked frame
+    trackedFrames(timePt) = whiskerInf{timePt}{1}; 
+end
+end
