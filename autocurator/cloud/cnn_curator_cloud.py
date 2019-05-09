@@ -71,12 +71,12 @@ def curate_data_with_model(data, curation_model):
 
 
 def write_array_to_file(curated_labels, file_name):
-    file_name = file_name + '_curated.pickle'
+    file_name = file_name + '_curated.npy'
     out_m = 'Writing file: ' + file_name
     logging.info(out_m)
-    # Re-pickle our numpy array and write to path
+    # Save numpy array
     with file_io.FileIO(file_name, mode='wb') as handle:
-        pickle.dump(curated_labels, handle)
+        np.save(curated_labels, handle)
 
 
 if __name__ == '__main__':
