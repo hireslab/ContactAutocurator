@@ -1,4 +1,4 @@
-# ContactAutocurator
+# ContactAutocurator (H-Lab Compatibility Version)
 Code to train and deploy neural network models to curate whisker touch data
 
 [![Hires Lab](https://github.com/jonathansy/whisker-autocurator/blob/master/Resources/Images/HiresLab-logoM.png)](http://68.181.113.239:8080//hireslabwiki/index.php?title=Main_Page)
